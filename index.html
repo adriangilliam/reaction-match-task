@@ -85,9 +85,9 @@
     <div class="card">
       <h1>Match Tap</h1>
       <p class="muted" style="margin:.25rem 0 1rem">
-        Shapes flash one at a time. <b>Tap (or press Space) only when a shape repeats</b> —
-        the <em>same color AND shape</em> as the one right before it. We measure your reaction
-        time and your errors.
+        Shapes flash one at a time, at <b>random intervals</b>. <b>Tap (or press Space) only
+        when the shape matches</b> <span id="ruleText" style="color:var(--accent)"></span>
+        — <em>same color AND shape</em>. We measure your reaction time and your errors.
       </p>
       <div class="legend">
         <span class="chip"><span class="swatch col-red square"></span>red square</span>
@@ -96,6 +96,13 @@
         <span class="chip"><span class="swatch col-blue circle"></span>blue circle</span>
       </div>
       <div style="margin:1.25rem 0;display:flex;flex-direction:column;gap:1rem;align-items:center">
+        <label class="field" style="align-items:center">N-back (how many shapes back to match)
+          <div class="opt" data-opt="n">
+            <button data-v="1">1</button>
+            <button data-v="2" class="sel">2</button>
+            <button data-v="3">3</button>
+          </div>
+        </label>
         <label class="field" style="align-items:center">Trials
           <div class="opt" data-opt="trials">
             <button data-v="30">30</button>
@@ -105,9 +112,9 @@
         </label>
         <label class="field" style="align-items:center">Speed
           <div class="opt" data-opt="speed">
-            <button data-v="1900">Relaxed</button>
-            <button data-v="1500" class="sel">Standard</button>
-            <button data-v="1100">Fast</button>
+            <button data-v="relaxed">Relaxed</button>
+            <button data-v="standard" class="sel">Standard</button>
+            <button data-v="fast">Fast</button>
           </div>
         </label>
       </div>
@@ -140,13 +147,13 @@
         <div class="tile"><div class="k">Mean reaction time</div><div class="v" id="rRt">–</div></div>
         <div class="tile"><div class="k">Accuracy</div><div class="v" id="rAcc">–</div></div>
         <div class="tile"><div class="k">Correct taps (hits)</div><div class="v good" id="rHit">–</div></div>
-        <div class="tile"><div class="k">Missed repeats</div><div class="v bad" id="rMiss">–</div></div>
+        <div class="tile"><div class="k">Missed targets</div><div class="v bad" id="rMiss">–</div></div>
         <div class="tile"><div class="k">False taps</div><div class="v bad" id="rFa">–</div></div>
         <div class="tile"><div class="k">d′ (sensitivity)</div><div class="v" id="rDp">–</div></div>
       </div>
       <table>
         <tr><th>Metric</th><th>Value</th></tr>
-        <tr><td>Targets (repeats shown)</td><td id="tTargets">–</td></tr>
+        <tr><td>Targets (n-back matches)</td><td id="tTargets">–</td></tr>
         <tr><td>Hits / Misses</td><td id="tHM">–</td></tr>
         <tr><td>False positives / Correct rejections</td><td id="tFC">–</td></tr>
         <tr><td>Median RT</td><td id="tMed">–</td></tr>
@@ -174,10 +181,15 @@
     {color:"red", shape:"circle"},
     {color:"blue",shape:"circle"},
   ];
-  const P_TARGET = 0.32;        // probability a stimulus repeats the previous one
-  const STIM_VISIBLE_FRAC = 0.66; // fraction of SOA the shape is on screen
+  const P_TARGET = 0.32;        // probability a given stimulus is an n-back target
 
-  const cfg = { trials: 60, soa: 1500 };
+  // speed presets: stimMs = on-screen time; isi range = randomized blank gap before next
+  const SPEEDS = {
+    relaxed:  {stimMs:1100, isiMin:700, isiMax:1500},
+    standard: {stimMs:850,  isiMin:500, isiMax:1100},
+    fast:     {stimMs:600,  isiMin:300, isiMax:700},
+  };
+  const cfg = Object.assign({ trials:60, n:2 }, SPEEDS.standard);
 
   // ----- elements -----
   const el = (id)=>document.getElementById(id);
@@ -186,15 +198,23 @@
   const hTrial=el("hTrial"), hBar=el("hBar"), hHit=el("hHit"), hMiss=el("hMiss"), hFa=el("hFa");
 
   // ----- option pickers -----
+  function updateRule(){
+    const n = cfg.n;
+    const txt = n===1 ? "the shape right before it (a repeat)" : ("the shape "+n+" shapes back");
+    const r = el("ruleText"); if(r) r.textContent = txt;
+  }
   document.querySelectorAll(".opt").forEach(opt=>{
     opt.addEventListener("click", e=>{
       const b = e.target.closest("button"); if(!b) return;
       opt.querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
       b.classList.add("sel");
-      const key = opt.dataset.opt, val = +b.dataset.v;
-      if(key==="trials") cfg.trials = val; else cfg.speed = val, cfg.soa = val;
+      const key = opt.dataset.opt, val = b.dataset.v;
+      if(key==="trials") cfg.trials = +val;
+      else if(key==="n"){ cfg.n = +val; updateRule(); }
+      else if(key==="speed"){ Object.assign(cfg, SPEEDS[val]); }
     });
   });
+  updateRule();
 
   // ----- run state -----
   let seq=[];          // array of type indices
@@ -205,15 +225,19 @@
   let log=[];          // per-trial records
   let timers=[];
   let running=false;
+  let curISI=0;        // randomized blank gap used on the current trial
 
-  function buildSequence(n){
+  // target = stimulus matches the one `nback` positions earlier
+  function buildSequence(trials, nback){
     const s=[], t=[];
-    s.push(Math.floor(Math.random()*4)); t.push(false);
-    for(let i=1;i<n;i++){
-      if(Math.random()<P_TARGET){ s.push(s[i-1]); t.push(true); }
-      else{
-        let r; do{ r=Math.floor(Math.random()*4); }while(r===s[i-1]);
-        s.push(r); t.push(false);
+    for(let i=0;i<trials;i++){
+      if(i>=nback && Math.random()<P_TARGET){
+        s.push(s[i-nback]); t.push(true);          // n-back match
+      } else if(i>=nback){
+        let r; do{ r=Math.floor(Math.random()*4); }while(r===s[i-nback]);
+        s.push(r); t.push(false);                  // deliberate non-match
+      } else {
+        s.push(Math.floor(Math.random()*4)); t.push(false); // first n have no referent
       }
     }
     return {s,t};
@@ -222,10 +246,12 @@
   function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
 
   function startGame(){
-    const built = buildSequence(cfg.trials);
+    const built = buildSequence(cfg.trials, cfg.n);
     seq=built.s; isTarget=built.t;
     trial=0; log=[]; running=true;
     hHit.textContent=hMiss.textContent=hFa.textContent="0";
+    document.querySelector(".taphint").textContent =
+      cfg.n===1 ? "tap when it repeats" : ("tap on a "+cfg.n+"-back match");
     screens.start.classList.remove("active");
     screens.results.classList.remove("active");
     play.classList.add("active");
@@ -244,9 +270,10 @@
     // align onset with next paint for accurate RT
     requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ onset = performance.now(); }); });
 
-    const visible = cfg.soa*STIM_VISIBLE_FRAC;
-    timers.push(setTimeout(()=>{ shapeEl.classList.add("hidden"); }, visible));
-    timers.push(setTimeout(()=>{ endTrial(); }, cfg.soa));
+    // fixed on-screen time, then a RANDOM blank gap before the next stimulus
+    curISI = Math.round(cfg.isiMin + Math.random()*(cfg.isiMax-cfg.isiMin));
+    timers.push(setTimeout(()=>{ shapeEl.classList.add("hidden"); }, cfg.stimMs));
+    timers.push(setTimeout(()=>{ endTrial(); }, cfg.stimMs + curISI));
   }
 
   function endTrial(){
@@ -286,6 +313,7 @@
       shape: TYPES[seq[trial]].shape,
       isTarget: isTarget[trial],
       rt: rt,
+      isi: curISI,
       outcome: outcome
     });
   }
@@ -377,8 +405,8 @@
   // ---- CSV ----
   el("csvBtn").addEventListener("click", ()=>{
     if(!lastSummary) return;
-    const rows = [["trial","color","shape","is_target","reaction_ms","outcome"]];
-    lastSummary.log.forEach(r=>rows.push([r.trial,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.outcome]));
+    const rows = [["trial","nback","color","shape","is_target","reaction_ms","isi_ms","outcome"]];
+    lastSummary.log.forEach(r=>rows.push([r.trial,lastSummary.cfg.n,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.isi,r.outcome]));
     const csv = rows.map(r=>r.join(",")).join("\n");
     const blob = new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");
