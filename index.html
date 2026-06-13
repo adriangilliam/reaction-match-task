@@ -174,13 +174,9 @@
     {color:"red", shape:"circle"},
     {color:"blue",shape:"circle"},
   ];
-  // speed presets: stimMs = on-screen time; isi range = randomized blank gap before next
-  const SPEEDS = {
-    relaxed:  {stimMs:650, isiMin:500, isiMax:2200},
-    standard: {stimMs:420, isiMin:400, isiMax:1700},
-    fast:     {stimMs:280, isiMin:220, isiMax:1100},
-  };
-  const cfg = Object.assign({ trials:60 }, SPEEDS.fast); // fast is the only mode
+  // each flash is a short RANDOM duration; then a RANDOM, long-tailed blank gap before next
+  const TIMING = { stimMin:100, stimMax:250, isiMin:200, isiMax:5000 };
+  const cfg = Object.assign({ trials:60 }, TIMING);
 
   // ----- elements -----
   const el = (id)=>document.getElementById(id);
@@ -196,7 +192,6 @@
       b.classList.add("sel");
       const key = opt.dataset.opt, val = b.dataset.v;
       if(key==="trials") cfg.trials = +val;
-      else if(key==="speed"){ Object.assign(cfg, SPEEDS[val]); }
     });
   });
 
@@ -210,6 +205,7 @@
   let timers=[];
   let running=false;
   let curISI=0;        // randomized blank gap used on the current trial
+  let curStim=0;       // randomized flash duration used on the current trial
 
   // Build a stream of runs. Each run is the same shape repeated a RANDOM (indeterminate)
   // number of times. A run of length L yields L-1 targets (every repeat after the first).
@@ -264,10 +260,11 @@
     // align onset with next paint for accurate RT
     requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ onset = performance.now(); }); });
 
-    // fixed on-screen time, then a RANDOM blank gap before the next stimulus
-    curISI = Math.round(cfg.isiMin + Math.random()*(cfg.isiMax-cfg.isiMin));
-    timers.push(setTimeout(()=>{ shapeEl.classList.add("hidden"); }, cfg.stimMs));
-    timers.push(setTimeout(()=>{ endTrial(); }, cfg.stimMs + curISI));
+    // short RANDOM flash (100-250ms), then a RANDOM (long-tailed) blank gap before the next
+    curStim = Math.round(cfg.stimMin + Math.random()*(cfg.stimMax-cfg.stimMin));
+    curISI  = Math.round(cfg.isiMin  + Math.random()*(cfg.isiMax-cfg.isiMin));
+    timers.push(setTimeout(()=>{ shapeEl.classList.add("hidden"); }, curStim));
+    timers.push(setTimeout(()=>{ endTrial(); }, curStim + curISI));
   }
 
   function endTrial(){
@@ -307,6 +304,7 @@
       shape: TYPES[seq[trial]].shape,
       isTarget: isTarget[trial],
       rt: rt,
+      flash: curStim,
       isi: curISI,
       outcome: outcome
     });
@@ -399,8 +397,8 @@
   // ---- CSV ----
   el("csvBtn").addEventListener("click", ()=>{
     if(!lastSummary) return;
-    const rows = [["trial","color","shape","is_repeat","reaction_ms","isi_ms","outcome"]];
-    lastSummary.log.forEach(r=>rows.push([r.trial,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.isi,r.outcome]));
+    const rows = [["trial","color","shape","is_repeat","reaction_ms","flash_ms","isi_ms","outcome"]];
+    lastSummary.log.forEach(r=>rows.push([r.trial,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.flash,r.isi,r.outcome]));
     const csv = rows.map(r=>r.join(",")).join("\n");
     const blob = new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");
