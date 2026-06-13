@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1220" />
+<title>Match Tap — Reaction Task</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#181c2e; --ink:#e8ebf5; --muted:#9aa3c0;
+    --good:#3ddc84; --bad:#ff5d6c; --accent:#6ea8fe; --line:#2a3050;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    user-select:none; -webkit-user-select:none; touch-action:manipulation;
+    overflow:hidden; display:flex; flex-direction:column; height:100dvh;
+  }
+  h1{font-size:1.25rem;margin:0 0 .25rem;letter-spacing:.3px;}
+  .muted{color:var(--muted);}
+  button{
+    font:inherit; color:var(--ink); background:var(--accent); border:0;
+    padding:.8rem 1.4rem; border-radius:12px; font-weight:600; cursor:pointer;
+  }
+  button.ghost{background:transparent;border:1px solid var(--line);}
+  button:active{transform:translateY(1px);}
+  .wrap{flex:1;display:flex;flex-direction:column;}
+
+  /* Screens */
+  .screen{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;
+    gap:1rem;padding:1.25rem;text-align:center;}
+  .screen.active{display:flex;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:1.5rem;max-width:560px;width:100%;}
+  .legend{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 0;}
+  .legend .chip{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--muted);}
+  .swatch{width:22px;height:22px;}
+  .row{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;align-items:center;}
+  .opt{display:flex;gap:.4rem;background:#11152a;border:1px solid var(--line);border-radius:12px;padding:.25rem;}
+  .opt button{background:transparent;padding:.5rem .8rem;border-radius:9px;color:var(--muted);font-weight:600;}
+  .opt button.sel{background:var(--accent);color:#06122e;}
+  label.field{display:flex;flex-direction:column;gap:.4rem;align-items:flex-start;font-size:.85rem;color:var(--muted);}
+
+  /* Play area */
+  #play{display:none;flex:1;flex-direction:column;}
+  #play.active{display:flex;}
+  .hud{display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;border-bottom:1px solid var(--line);
+    font-variant-numeric:tabular-nums;font-size:.85rem;}
+  .hud .stat{display:flex;align-items:center;gap:.3rem;}
+  .hud .grow{flex:1;}
+  .bar{height:6px;background:#11152a;border-radius:99px;overflow:hidden;flex:1;max-width:240px;}
+  .bar > i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s linear;}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;}
+  .stage::after{content:"";position:absolute;inset:10px;border-radius:24px;border:3px solid transparent;transition:border-color .08s;}
+  .stage.flash-good::after{border-color:var(--good);}
+  .stage.flash-bad::after{border-color:var(--bad);}
+  .shape{width:42vmin;height:42vmin;max-width:340px;max-height:340px;transition:opacity .05s;}
+  .shape.hidden{opacity:0;}
+  .shape.square{border-radius:8%;}
+  .shape.circle{border-radius:50%;}
+  .col-red{background:#ff4d4d;}
+  .col-blue{background:#3b82ff;}
+  .taphint{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:var(--muted);font-size:.8rem;}
+
+  /* Results */
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  td,th{padding:.5rem .4rem;border-bottom:1px solid var(--line);text-align:right;}
+  th:first-child,td:first-child{text-align:left;color:var(--muted);font-weight:500;}
+  .big{font-size:2.2rem;font-weight:700;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.5rem 0 1rem;}
+  .tile{background:#11152a;border:1px solid var(--line);border-radius:14px;padding:.9rem;}
+  .tile .k{color:var(--muted);font-size:.8rem;}
+  .tile .v{font-size:1.5rem;font-weight:700;margin-top:.2rem;}
+  .v.good{color:var(--good);} .v.bad{color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- START -->
+  <section id="start" class="screen active">
+    <div class="card">
+      <h1>Match Tap</h1>
+      <p class="muted" style="margin:.25rem 0 1rem">
+        Shapes flash one at a time. <b>Tap (or press Space) only when a shape repeats</b> —
+        the <em>same color AND shape</em> as the one right before it. We measure your reaction
+        time and your errors.
+      </p>
+      <div class="legend">
+        <span class="chip"><span class="swatch col-red square"></span>red square</span>
+        <span class="chip"><span class="swatch col-blue square"></span>blue square</span>
+        <span class="chip"><span class="swatch col-red circle"></span>red circle</span>
+        <span class="chip"><span class="swatch col-blue circle"></span>blue circle</span>
+      </div>
+      <div style="margin:1.25rem 0;display:flex;flex-direction:column;gap:1rem;align-items:center">
+        <label class="field" style="align-items:center">Trials
+          <div class="opt" data-opt="trials">
+            <button data-v="30">30</button>
+            <button data-v="60" class="sel">60</button>
+            <button data-v="100">100</button>
+          </div>
+        </label>
+        <label class="field" style="align-items:center">Speed
+          <div class="opt" data-opt="speed">
+            <button data-v="1900">Relaxed</button>
+            <button data-v="1500" class="sel">Standard</button>
+            <button data-v="1100">Fast</button>
+          </div>
+        </label>
+      </div>
+      <button id="startBtn" style="font-size:1.1rem">Start</button>
+      <p class="muted" id="best" style="margin:1rem 0 0;font-size:.8rem"></p>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="play">
+    <div class="hud">
+      <span class="stat" title="trial">#<b id="hTrial">0</b></span>
+      <span class="bar"><i id="hBar"></i></span>
+      <span class="grow"></span>
+      <span class="stat" style="color:var(--good)">✓<b id="hHit">0</b></span>
+      <span class="stat" style="color:var(--bad)">✗<b id="hMiss">0</b></span>
+      <span class="stat" style="color:var(--bad)">!<b id="hFa">0</b></span>
+    </div>
+    <div class="stage" id="stage">
+      <div class="shape hidden" id="shape"></div>
+      <div class="taphint">tap when it repeats</div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="screen">
+    <div class="card">
+      <h1>Results</h1>
+      <div class="grid2">
+        <div class="tile"><div class="k">Mean reaction time</div><div class="v" id="rRt">–</div></div>
+        <div class="tile"><div class="k">Accuracy</div><div class="v" id="rAcc">–</div></div>
+        <div class="tile"><div class="k">Correct taps (hits)</div><div class="v good" id="rHit">–</div></div>
+        <div class="tile"><div class="k">Missed repeats</div><div class="v bad" id="rMiss">–</div></div>
+        <div class="tile"><div class="k">False taps</div><div class="v bad" id="rFa">–</div></div>
+        <div class="tile"><div class="k">d′ (sensitivity)</div><div class="v" id="rDp">–</div></div>
+      </div>
+      <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Targets (repeats shown)</td><td id="tTargets">–</td></tr>
+        <tr><td>Hits / Misses</td><td id="tHM">–</td></tr>
+        <tr><td>False positives / Correct rejections</td><td id="tFC">–</td></tr>
+        <tr><td>Median RT</td><td id="tMed">–</td></tr>
+        <tr><td>RT range (min–max)</td><td id="tRange">–</td></tr>
+        <tr><td>Hit rate / False-alarm rate</td><td id="tRates">–</td></tr>
+      </table>
+      <div class="row" style="margin-top:1.25rem">
+        <button id="againBtn">Play again</button>
+        <button id="csvBtn" class="ghost">Download CSV</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+  // ----- stimuli: 0 red square, 1 blue square, 2 red circle, 3 blue circle -----
+  const COLORS = ["red","blue"];
+  const SHAPES = ["square","circle"];
+  const TYPES = [
+    {color:"red", shape:"square"},
+    {color:"blue",shape:"square"},
+    {color:"red", shape:"circle"},
+    {color:"blue",shape:"circle"},
+  ];
+  const P_TARGET = 0.32;        // probability a stimulus repeats the previous one
+  const STIM_VISIBLE_FRAC = 0.66; // fraction of SOA the shape is on screen
+
+  const cfg = { trials: 60, soa: 1500 };
+
+  // ----- elements -----
+  const el = (id)=>document.getElementById(id);
+  const screens = { start:el("start"), results:el("results") };
+  const play = el("play"), stage = el("stage"), shapeEl = el("shape");
+  const hTrial=el("hTrial"), hBar=el("hBar"), hHit=el("hHit"), hMiss=el("hMiss"), hFa=el("hFa");
+
+  // ----- option pickers -----
+  document.querySelectorAll(".opt").forEach(opt=>{
+    opt.addEventListener("click", e=>{
+      const b = e.target.closest("button"); if(!b) return;
+      opt.querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+      b.classList.add("sel");
+      const key = opt.dataset.opt, val = +b.dataset.v;
+      if(key==="trials") cfg.trials = val; else cfg.speed = val, cfg.soa = val;
+    });
+  });
+
+  // ----- run state -----
+  let seq=[];          // array of type indices
+  let isTarget=[];     // bool per trial
+  let trial=0;
+  let onset=0;         // performance.now() at stimulus paint
+  let responded=false;
+  let log=[];          // per-trial records
+  let timers=[];
+  let running=false;
+
+  function buildSequence(n){
+    const s=[], t=[];
+    s.push(Math.floor(Math.random()*4)); t.push(false);
+    for(let i=1;i<n;i++){
+      if(Math.random()<P_TARGET){ s.push(s[i-1]); t.push(true); }
+      else{
+        let r; do{ r=Math.floor(Math.random()*4); }while(r===s[i-1]);
+        s.push(r); t.push(false);
+      }
+    }
+    return {s,t};
+  }
+
+  function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
+
+  function startGame(){
+    const built = buildSequence(cfg.trials);
+    seq=built.s; isTarget=built.t;
+    trial=0; log=[]; running=true;
+    hHit.textContent=hMiss.textContent=hFa.textContent="0";
+    screens.start.classList.remove("active");
+    screens.results.classList.remove("active");
+    play.classList.add("active");
+    nextTrial();
+  }
+
+  function nextTrial(){
+    if(trial>=seq.length){ finish(); return; }
+    responded=false;
+    onset=0; // ignore taps until the new stimulus is actually painted
+    const type = TYPES[seq[trial]];
+    // paint shape
+    shapeEl.className = "shape "+type.shape+" col-"+type.color;
+    hTrial.textContent = String(trial+1);
+    hBar.style.width = ((trial)/seq.length*100)+"%";
+    // align onset with next paint for accurate RT
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ onset = performance.now(); }); });
+
+    const visible = cfg.soa*STIM_VISIBLE_FRAC;
+    timers.push(setTimeout(()=>{ shapeEl.classList.add("hidden"); }, visible));
+    timers.push(setTimeout(()=>{ endTrial(); }, cfg.soa));
+  }
+
+  function endTrial(){
+    // resolve no-response cases
+    if(!responded){
+      if(isTarget[trial]){ // missed a repeat
+        record(null,"miss");
+        hMiss.textContent = String(+hMiss.textContent+1);
+      } else {
+        record(null,"correct_reject");
+      }
+    }
+    trial++;
+    nextTrial();
+  }
+
+  function respond(){
+    if(!running || responded) return;
+    if(onset===0) return; // not painted yet, ignore
+    responded=true;
+    const rt = Math.round(performance.now()-onset);
+    if(isTarget[trial]){
+      record(rt,"hit");
+      hHit.textContent = String(+hHit.textContent+1);
+      flash("good");
+    } else {
+      record(rt,"false_pos");
+      hFa.textContent = String(+hFa.textContent+1);
+      flash("bad");
+    }
+  }
+
+  function record(rt,outcome){
+    log.push({
+      trial: trial+1,
+      color: TYPES[seq[trial]].color,
+      shape: TYPES[seq[trial]].shape,
+      isTarget: isTarget[trial],
+      rt: rt,
+      outcome: outcome
+    });
+  }
+
+  function flash(kind){
+    stage.classList.remove("flash-good","flash-bad");
+    void stage.offsetWidth;
+    stage.classList.add(kind==="good"?"flash-good":"flash-bad");
+    setTimeout(()=>stage.classList.remove("flash-good","flash-bad"),140);
+  }
+
+  // ---- input ----
+  stage.addEventListener("pointerdown", (e)=>{ e.preventDefault(); respond(); }, {passive:false});
+  window.addEventListener("keydown", (e)=>{
+    if(e.code==="Space" || e.key===" "){ e.preventDefault(); if(running) respond(); }
+  });
+
+  // ---- finish + metrics ----
+  function normInv(p){
+    const a=[-3.969683028665376e1,2.209460984245205e2,-2.759285104469687e2,1.38357751867269e2,-3.066479806614716e1,2.506628277459239];
+    const b=[-5.447609879822406e1,1.615858368580409e2,-1.556989798598866e2,6.680131188771972e1,-1.328068155288572e1];
+    const c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
+    const d=[7.784695709041462e-3,3.224671290700398e-1,2.445134137142996,3.754408661907416];
+    const pl=0.02425, ph=1-pl; let q,r;
+    if(p<pl){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+    if(p<=ph){q=p-0.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+    q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+
+  let lastSummary=null;
+  function finish(){
+    running=false; clearTimers();
+    shapeEl.classList.add("hidden");
+    play.classList.remove("active");
+
+    const targets = log.filter(r=>r.isTarget).length;
+    const nontargets = log.length - targets;
+    const hits = log.filter(r=>r.outcome==="hit");
+    const misses = log.filter(r=>r.outcome==="miss").length;
+    const fas = log.filter(r=>r.outcome==="false_pos").length;
+    const crs = log.filter(r=>r.outcome==="correct_reject").length;
+    const rts = hits.map(r=>r.rt).sort((a,b)=>a-b);
+
+    const mean = rts.length? Math.round(rts.reduce((a,b)=>a+b,0)/rts.length):null;
+    const median = rts.length? rts[Math.floor((rts.length-1)/2)]:null;
+    const correct = hits.length + crs;
+    const acc = log.length? Math.round(correct/log.length*100):0;
+
+    // signal detection with log-linear correction
+    const hr = (hits.length+0.5)/(targets+1);
+    const far = (fas+0.5)/(nontargets+1);
+    const dprime = (normInv(hr)-normInv(far));
+
+    el("rRt").textContent = mean!=null? mean+" ms":"–";
+    el("rAcc").textContent = acc+"%";
+    el("rHit").textContent = hits.length;
+    el("rMiss").textContent = misses;
+    el("rFa").textContent = fas;
+    el("rDp").textContent = isFinite(dprime)? dprime.toFixed(2):"–";
+
+    el("tTargets").textContent = targets;
+    el("tHM").textContent = hits.length+" / "+misses;
+    el("tFC").textContent = fas+" / "+crs;
+    el("tMed").textContent = median!=null? median+" ms":"–";
+    el("tRange").textContent = rts.length? (rts[0]+"–"+rts[rts.length-1]+" ms"):"–";
+    el("tRates").textContent = Math.round(hits.length/(targets||1)*100)+"% / "+Math.round(fas/(nontargets||1)*100)+"%";
+
+    screens.results.classList.add("active");
+    lastSummary = {mean, acc, log:[...log], cfg:{...cfg}};
+    saveBest(mean, acc);
+  }
+
+  function saveBest(mean, acc){
+    try{
+      if(mean==null) return;
+      const prev = JSON.parse(localStorage.getItem("matchtap_best")||"null");
+      if(!prev || mean < prev.mean){
+        localStorage.setItem("matchtap_best", JSON.stringify({mean, acc, ts:Date.now()}));
+      }
+    }catch(e){}
+  }
+  function showBest(){
+    try{
+      const b = JSON.parse(localStorage.getItem("matchtap_best")||"null");
+      el("best").textContent = b? ("Personal best: "+b.mean+" ms  ·  "+b.acc+"% accuracy") : "";
+    }catch(e){}
+  }
+
+  // ---- CSV ----
+  el("csvBtn").addEventListener("click", ()=>{
+    if(!lastSummary) return;
+    const rows = [["trial","color","shape","is_target","reaction_ms","outcome"]];
+    lastSummary.log.forEach(r=>rows.push([r.trial,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.outcome]));
+    const csv = rows.map(r=>r.join(",")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="match-tap-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
+    a.click();
+  });
+
+  // ---- buttons ----
+  el("startBtn").addEventListener("click", startGame);
+  el("againBtn").addEventListener("click", ()=>{
+    screens.results.classList.remove("active");
+    screens.start.classList.add("active");
+    showBest();
+  });
+
+  showBest();
+})();
+</script>
+</body>
+</html>
