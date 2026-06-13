@@ -89,10 +89,11 @@
     <div class="card">
       <h1>Match Tap</h1>
       <p class="muted" style="margin:.25rem 0 1rem">
-        Shapes flash one at a time, at <b>random intervals</b>. Each round picks a
-        <b style="color:var(--accent)">random N-back (2–5)</b> — <b>tap (or press Space) only
-        when the shape matches the one N shapes back</b> (<em>same color AND shape</em>).
-        We'll tell you this round's N when you start.
+        Shapes flash one at a time, at <b>random intervals</b>. A shape can repeat several
+        times in a row — for an <b style="color:var(--accent)">unpredictable number of times</b>.
+        <b>Tap (or press Space) every time a shape repeats the one right before it</b>
+        (<em>same color AND shape</em>), and stop the moment it changes. We measure your
+        reaction time and your errors.
       </p>
       <div class="legend">
         <span class="chip"><span class="swatch col-red square"></span>red square</span>
@@ -125,7 +126,6 @@
   <section id="play">
     <div class="hud">
       <span class="stat" title="trial">#<b id="hTrial">0</b></span>
-      <span class="stat" id="hN" style="color:var(--accent);font-weight:700"></span>
       <span class="bar"><i id="hBar"></i></span>
       <span class="grow"></span>
       <span class="stat" style="color:var(--good)">✓<b id="hHit">0</b></span>
@@ -147,13 +147,13 @@
         <div class="tile"><div class="k">Mean reaction time</div><div class="v" id="rRt">–</div></div>
         <div class="tile"><div class="k">Accuracy</div><div class="v" id="rAcc">–</div></div>
         <div class="tile"><div class="k">Correct taps (hits)</div><div class="v good" id="rHit">–</div></div>
-        <div class="tile"><div class="k">Missed targets</div><div class="v bad" id="rMiss">–</div></div>
+        <div class="tile"><div class="k">Missed repeats</div><div class="v bad" id="rMiss">–</div></div>
         <div class="tile"><div class="k">False taps</div><div class="v bad" id="rFa">–</div></div>
         <div class="tile"><div class="k">d′ (sensitivity)</div><div class="v" id="rDp">–</div></div>
       </div>
       <table>
         <tr><th>Metric</th><th>Value</th></tr>
-        <tr><td>Targets (n-back matches)</td><td id="tTargets">–</td></tr>
+        <tr><td>Targets (repeats)</td><td id="tTargets">–</td></tr>
         <tr><td>Hits / Misses</td><td id="tHM">–</td></tr>
         <tr><td>False positives / Correct rejections</td><td id="tFC">–</td></tr>
         <tr><td>Median RT</td><td id="tMed">–</td></tr>
@@ -181,15 +181,13 @@
     {color:"red", shape:"circle"},
     {color:"blue",shape:"circle"},
   ];
-  const P_TARGET = 0.32;        // probability a given stimulus is an n-back target
-
   // speed presets: stimMs = on-screen time; isi range = randomized blank gap before next
   const SPEEDS = {
     relaxed:  {stimMs:650, isiMin:500, isiMax:2200},
     standard: {stimMs:420, isiMin:400, isiMax:1700},
     fast:     {stimMs:280, isiMin:220, isiMax:1100},
   };
-  const cfg = Object.assign({ trials:60, n:2 }, SPEEDS.standard);
+  const cfg = Object.assign({ trials:60 }, SPEEDS.standard);
 
   // ----- elements -----
   const el = (id)=>document.getElementById(id);
@@ -220,18 +218,23 @@
   let running=false;
   let curISI=0;        // randomized blank gap used on the current trial
 
-  // target = stimulus matches the one `nback` positions earlier
-  function buildSequence(trials, nback){
+  // Build a stream of runs. Each run is the same shape repeated a RANDOM (indeterminate)
+  // number of times. A run of length L yields L-1 targets (every repeat after the first).
+  const P_SINGLE = 0.5;    // chance a run is a one-off (length 1, no repeat)
+  const P_EXTEND = 0.45;   // chance a repeating run keeps going one more (indeterminate length)
+  function buildSequence(trials){
     const s=[], t=[];
-    for(let i=0;i<trials;i++){
-      if(i>=nback && Math.random()<P_TARGET){
-        s.push(s[i-nback]); t.push(true);          // n-back match
-      } else if(i>=nback){
-        let r; do{ r=Math.floor(Math.random()*4); }while(r===s[i-nback]);
-        s.push(r); t.push(false);                  // deliberate non-match
-      } else {
-        s.push(Math.floor(Math.random()*4)); t.push(false); // first n have no referent
+    let prev=-1;
+    while(s.length < trials){
+      let stim; do{ stim=Math.floor(Math.random()*4); }while(stim===prev); // new run = real change
+      let runLen;
+      if(Math.random() < P_SINGLE){ runLen = 1; }
+      else { runLen = 2; while(Math.random() < P_EXTEND) runLen++; }        // 2,3,4,5,… indeterminate
+      for(let k=0; k<runLen && s.length<trials; k++){
+        s.push(stim);
+        t.push(k>0);   // first of a run = non-target; each consecutive repeat = target
       }
+      prev = stim;
     }
     return {s,t};
   }
@@ -239,24 +242,21 @@
   function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
 
   function startGame(){
-    cfg.n = 2 + Math.floor(Math.random()*4);     // random N-back in {2,3,4,5} each round
-    const built = buildSequence(cfg.trials, cfg.n);
+    const built = buildSequence(cfg.trials);
     seq=built.s; isTarget=built.t;
     trial=0; log=[]; running=true; onset=0;
     hHit.textContent=hMiss.textContent=hFa.textContent="0";
-    el("hN").textContent = cfg.n+"-back";
-    el("taphint").textContent = "tap on a "+cfg.n+"-back match";
+    el("taphint").textContent = "tap each time it repeats";
     screens.start.classList.remove("active");
     screens.results.classList.remove("active");
     play.classList.add("active");
-    // announce this round's N, then start the stimulus stream
+    // brief "get ready" beat before the stream begins
     shapeEl.classList.add("hidden");
     const ready = el("ready");
-    ready.innerHTML = '<div class="n">'+cfg.n+'-back</div>'+
-      '<div class="sub">tap when a shape matches the one <b>'+cfg.n+'</b> shapes back</div>'+
-      '<div class="sub">get ready…</div>';
+    ready.innerHTML = '<div class="n">Get ready</div>'+
+      '<div class="sub">tap whenever a shape repeats the one right before it</div>';
     ready.classList.remove("hidden");
-    timers.push(setTimeout(()=>{ ready.classList.add("hidden"); nextTrial(); }, 2800));
+    timers.push(setTimeout(()=>{ ready.classList.add("hidden"); nextTrial(); }, 1800));
   }
 
   function nextTrial(){
@@ -406,8 +406,8 @@
   // ---- CSV ----
   el("csvBtn").addEventListener("click", ()=>{
     if(!lastSummary) return;
-    const rows = [["trial","nback","color","shape","is_target","reaction_ms","isi_ms","outcome"]];
-    lastSummary.log.forEach(r=>rows.push([r.trial,lastSummary.cfg.n,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.isi,r.outcome]));
+    const rows = [["trial","color","shape","is_repeat","reaction_ms","isi_ms","outcome"]];
+    lastSummary.log.forEach(r=>rows.push([r.trial,r.color,r.shape,r.isTarget?1:0,r.rt==null?"":r.rt,r.isi,r.outcome]));
     const csv = rows.map(r=>r.join(",")).join("\n");
     const blob = new Blob([csv],{type:"text/csv"});
     const a=document.createElement("a");
