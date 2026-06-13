@@ -34,7 +34,7 @@
   .screen.active{display:flex;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
     padding:1.5rem;max-width:560px;width:100%;}
-  .legend{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 0;}
+  .legend{display:flex;flex-direction:column;align-items:center;gap:.55rem;margin:.6rem 0 0;}
   .legend .chip{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--muted);}
   .swatch{width:22px;height:22px;border-radius:4px;}
   .swatch.circle{border-radius:50%;}
@@ -109,13 +109,6 @@
             <button data-v="100">100</button>
           </div>
         </label>
-        <label class="field" style="align-items:center">Speed
-          <div class="opt" data-opt="speed">
-            <button data-v="relaxed">Relaxed</button>
-            <button data-v="standard" class="sel">Standard</button>
-            <button data-v="fast">Fast</button>
-          </div>
-        </label>
       </div>
       <button id="startBtn" style="font-size:1.1rem">Start</button>
       <p class="muted" id="best" style="margin:1rem 0 0;font-size:.8rem"></p>
@@ -187,7 +180,7 @@
     standard: {stimMs:420, isiMin:400, isiMax:1700},
     fast:     {stimMs:280, isiMin:220, isiMax:1100},
   };
-  const cfg = Object.assign({ trials:60 }, SPEEDS.standard);
+  const cfg = Object.assign({ trials:60 }, SPEEDS.fast); // fast is the only mode
 
   // ----- elements -----
   const el = (id)=>document.getElementById(id);
