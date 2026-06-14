@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  html,body{margin:0;padding:0;}
+  body{
+    width:1200px;height:630px;overflow:hidden;background:#0f1220;
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;
+    color:#e8ebf5;display:flex;align-items:center;justify-content:center;
+  }
+  .glow{position:absolute;top:-220px;left:50%;transform:translateX(-50%);
+    width:1000px;height:760px;border-radius:50%;
+    background:radial-gradient(closest-side, rgba(110,168,254,.22), rgba(110,168,254,0));}
+  .wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:30px;text-align:center;}
+  .shapes{display:flex;gap:46px;align-items:center;}
+  .sh{width:92px;height:92px;}
+  .sq{border-radius:18px;}
+  .ci{border-radius:50%;}
+  .red{background:#ff4d4d;}
+  .blue{background:#3b82ff;}
+  .ring{position:relative;}
+  .ring::after{content:"";position:absolute;inset:-15px;border:7px solid #3ddc84;border-radius:50%;
+    box-shadow:0 0 28px rgba(61,220,132,.5);}
+  h1{font-size:120px;font-weight:800;letter-spacing:-3px;margin:0;line-height:1;}
+  .tag{font-size:43px;color:#aeb6d0;margin:0;font-weight:500;}
+  .meta{font-size:25px;font-weight:600;letter-spacing:5px;color:#6b7393;margin:6px 0 0;}
+  .url{position:absolute;bottom:36px;left:0;right:0;text-align:center;color:#586089;font-size:24px;letter-spacing:1px;}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="shapes">
+      <div class="sh sq red"></div>
+      <div class="sh sq blue"></div>
+      <div class="sh ci red"></div>
+      <div class="sh ci blue ring"></div>
+    </div>
+    <h1>Match Tap</h1>
+    <p class="tag">Tap the instant a shape repeats.</p>
+    <p class="meta">REACTION TIME &nbsp;·&nbsp; FOCUS &nbsp;·&nbsp; d′ SENSITIVITY</p>
+  </div>
+  <div class="url">adriangilliam.github.io/reaction-match-task</div>
+</body>
+</html>
