@@ -58,6 +58,56 @@
   .demoShape.tapped{transform:scale(.88);box-shadow:0 0 0 6px rgba(61,220,132,.55),0 0 34px rgba(61,220,132,.4);}
   .demoTap{position:absolute;bottom:-2px;opacity:0;color:var(--good);font-weight:700;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;transition:opacity .16s;}
   .demoTap.show{opacity:1;}
+
+  /* Results dashboard */
+  #results{justify-content:flex-start;overflow-y:auto;}
+  .rcard{width:100%;max-width:560px;display:flex;flex-direction:column;gap:1rem;padding:1.5rem 1rem 2.5rem;margin:0 auto;}
+  .r-item{opacity:0;transform:translateY(18px);}
+  .r-item.in{opacity:1;transform:none;transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1);}
+
+  .hero{display:flex;flex-direction:column;align-items:center;gap:.35rem;}
+  .ringwrap{position:relative;width:208px;height:208px;}
+  .ring{width:100%;height:100%;transform:rotate(0);}
+  .ring-bg{fill:none;stroke:var(--line);stroke-width:8;}
+  .ring-fg{fill:none;stroke:url(#ringgrad);stroke-width:8;stroke-linecap:round;
+    stroke-dasharray:333;stroke-dashoffset:333;transition:stroke-dashoffset 1.15s cubic-bezier(.2,.7,.2,1);
+    filter:drop-shadow(0 0 6px rgba(110,168,254,.35));}
+  .ringctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;}
+  .ringctr .rt{font-size:3.1rem;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;}
+  .ringctr .rt .ms{font-size:1rem;font-weight:600;color:var(--muted);margin-left:.25rem;}
+  .ringctr .rtlbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);}
+  .acc{font-size:.95rem;color:var(--muted);margin-top:.4rem;}
+  .acc b{color:var(--ink);font-weight:700;}
+  .verdict{font-size:1.65rem;font-weight:800;letter-spacing:-.01em;margin-top:.2rem;color:var(--accent);
+    background:linear-gradient(90deg,#6ea8fe,#3ddc84);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .vsub{color:var(--muted);font-size:.9rem;max-width:24rem;}
+
+  .chartcard,.sdcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1rem;}
+  .charthead{display:flex;justify-content:space-between;align-items:baseline;font-size:.82rem;margin-bottom:.5rem;}
+  .charthead .muted{font-size:.78rem;}
+  .rtchart svg{width:100%;height:auto;display:block;overflow:visible;}
+  .rtchart .area{fill:url(#cg);opacity:0;animation:cfade .9s ease .25s forwards;}
+  .rtchart .line{fill:none;stroke:#6ea8fe;stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
+  .rtchart .medline{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 4;opacity:.45;}
+  .rtchart .dot{fill:#dbe7ff;opacity:0;animation:cfade .3s ease forwards;}
+  @keyframes cfade{to{opacity:1}}
+
+  .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;}
+  .bd{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:.85rem .35rem;text-align:center;}
+  .bd-v{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;}
+  .bd-v.good{color:var(--good);} .bd-v.bad{color:var(--bad);} .bd-v.warn{color:#ffb454;}
+  .bd-k{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:.4rem;}
+
+  .sdrow{display:flex;align-items:center;gap:.7rem;font-size:.85rem;margin:.4rem 0;}
+  .sdrow > span:first-child{width:88px;text-align:left;color:var(--muted);flex:none;}
+  .sdrow .track{flex:1;height:8px;background:#11152a;border-radius:99px;overflow:hidden;}
+  .sdrow .track > i{display:block;height:100%;width:0;background:var(--good);border-radius:99px;transition:width 1s cubic-bezier(.2,.7,.2,1);}
+  .sdrow .track > i.bad{background:var(--bad);}
+  .sdrow b{width:46px;text-align:right;font-variant-numeric:tabular-nums;flex:none;}
+  .sddetail{font-size:.76rem;color:var(--muted);text-align:center;margin-top:.7rem;}
+
+  .ractions{display:flex;gap:.75rem;justify-content:center;margin-top:.4rem;}
+  #againBtn{min-width:150px;box-shadow:0 6px 24px rgba(110,168,254,.3);}
   .legend .chip{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--muted);}
   .swatch{width:22px;height:22px;border-radius:4px;}
   .swatch.circle{border-radius:50%;}
@@ -179,29 +229,53 @@
 
   <!-- RESULTS -->
   <section id="results" class="screen">
-    <div class="card">
-      <h1>Results</h1>
-      <div class="grid2">
-        <div class="tile"><div class="k">Mean reaction time</div><div class="v" id="rRt">–</div></div>
-        <div class="tile"><div class="k">Accuracy</div><div class="v" id="rAcc">–</div></div>
-        <div class="tile"><div class="k">Correct taps (hits)</div><div class="v good" id="rHit">–</div></div>
-        <div class="tile"><div class="k">Missed repeats</div><div class="v bad" id="rMiss">–</div></div>
-        <div class="tile"><div class="k">False taps</div><div class="v bad" id="rFa">–</div></div>
-        <div class="tile"><div class="k">d′ (sensitivity)</div><div class="v" id="rDp">–</div></div>
+    <div class="rcard">
+
+      <div class="r-item hero">
+        <div class="ringwrap">
+          <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringgrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#6ea8fe"/>
+                <stop offset="1" stop-color="#3ddc84"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="53"/>
+            <circle class="ring-fg" id="ring" cx="60" cy="60" r="53" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div class="ringctr">
+            <div class="rt"><span id="rRt">0</span><span class="ms">ms</span></div>
+            <div class="rtlbl">mean reaction</div>
+          </div>
+        </div>
+        <div class="acc"><b id="rAcc">0</b>% accuracy</div>
+        <div class="verdict" id="rVerdict">—</div>
+        <div class="vsub" id="rVsub"></div>
       </div>
-      <table>
-        <tr><th>Metric</th><th>Value</th></tr>
-        <tr><td>Targets (repeats)</td><td id="tTargets">–</td></tr>
-        <tr><td>Hits / Misses</td><td id="tHM">–</td></tr>
-        <tr><td>False positives / Correct rejections</td><td id="tFC">–</td></tr>
-        <tr><td>Median RT</td><td id="tMed">–</td></tr>
-        <tr><td>RT range (min–max)</td><td id="tRange">–</td></tr>
-        <tr><td>Hit rate / False-alarm rate</td><td id="tRates">–</td></tr>
-      </table>
-      <div class="row" style="margin-top:1.25rem">
+
+      <div class="r-item chartcard">
+        <div class="charthead"><span>Reaction time across the run</span><span class="muted" id="rMed"></span></div>
+        <div id="rtChart" class="rtchart"></div>
+      </div>
+
+      <div class="r-item bdgrid">
+        <div class="bd"><div class="bd-v good" id="rHit">0</div><div class="bd-k">correct</div></div>
+        <div class="bd"><div class="bd-v warn" id="rMiss">0</div><div class="bd-k">missed</div></div>
+        <div class="bd"><div class="bd-v bad" id="rFa">0</div><div class="bd-k">false taps</div></div>
+        <div class="bd"><div class="bd-v" id="rDp">0</div><div class="bd-k">d′ sensitivity</div></div>
+      </div>
+
+      <div class="r-item sdcard">
+        <div class="sdrow"><span>Hit rate</span><span class="track"><i id="rHrBar"></i></span><b id="rHr">0%</b></div>
+        <div class="sdrow"><span>False alarms</span><span class="track"><i id="rFarBar" class="bad"></i></span><b id="rFar">0%</b></div>
+        <div class="sddetail" id="rDetail"></div>
+      </div>
+
+      <div class="r-item ractions">
         <button id="againBtn">Play again</button>
-        <button id="csvBtn" class="ghost">Download CSV</button>
+        <button id="csvBtn" class="ghost">Export CSV</button>
       </div>
+
     </div>
   </section>
 
@@ -380,6 +454,50 @@
     q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
   }
 
+  function animateCount(elm, to, dur){
+    const t0=performance.now();
+    (function step(now){
+      const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3);
+      elm.textContent = Math.round(to*e);
+      if(p<1) requestAnimationFrame(step); else elm.textContent = to;
+    })(performance.now());
+  }
+
+  function verdictFor(mean, acc){
+    if(mean==null) return {word:'No reads', sub:'You didn’t tap any repeats this round.'};
+    if(acc>=92 && mean<=430) return {word:'Razor sharp', sub:'Fast and precise. Elite focus.'};
+    if(acc>=85 && mean<=540) return {word:'Sharp', sub:'Quick reflexes, very few mistakes.'};
+    if(acc>=75)              return {word:'Steady', sub:'Solid attention, room to sharpen.'};
+    if(acc>=60)              return {word:'Scattered', sub:'The shifting pace caught you a few times.'};
+    return {word:'Warming up', sub:'Run it again, you’ll find the rhythm.'};
+  }
+
+  // Reaction time across the run: area + line (draws itself in) + median + per-tap dots.
+  function buildRTChart(hits){
+    const host=el('rtChart');
+    if(!hits.length){ host.innerHTML='<div class="muted" style="padding:1.6rem 0;text-align:center;font-size:.85rem">No correct taps to chart this round.</div>'; return; }
+    const W=320,H=112,pl=8,pr=8,pt=12,pb=12, n=hits.length, v=hits.map(h=>h.rt);
+    let mn=Math.min(...v), mx=Math.max(...v); if(mx===mn){mx=mn+1;}
+    const pad=(mx-mn)*0.18; mn-=pad; mx+=pad;
+    const X=i=> n===1? W/2 : pl + i/(n-1)*(W-pl-pr);
+    const Y=val=> (H-pb) - (val-mn)/(mx-mn)*(H-pt-pb);
+    const pts=v.map((val,i)=>[X(i),Y(val)]);
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const area='M'+pts[0][0].toFixed(1)+' '+(H-pb)+' '+pts.map(p=>'L'+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ')+' L'+pts[n-1][0].toFixed(1)+' '+(H-pb)+' Z';
+    const med=[...v].sort((a,b)=>a-b)[Math.floor((n-1)/2)], medY=Y(med).toFixed(1);
+    const dots=pts.map((p,i)=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.4" class="dot" style="animation-delay:'+(140+i*16)+'ms"/>').join('');
+    host.innerHTML='<svg viewBox="0 0 '+W+' '+H+'">'
+      +'<defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="#6ea8fe" stop-opacity=".5"/><stop offset="1" stop-color="#6ea8fe" stop-opacity="0"/></linearGradient></defs>'
+      +'<line x1="'+pl+'" y1="'+medY+'" x2="'+(W-pr)+'" y2="'+medY+'" class="medline"/>'
+      +'<path d="'+area+'" class="area"/><path d="'+line+'" class="line"/>'+dots+'</svg>';
+    const lineEl=host.querySelector('.line'), len=lineEl.getTotalLength();
+    lineEl.style.strokeDasharray=len; lineEl.style.strokeDashoffset=len;
+    void lineEl.getBoundingClientRect();
+    lineEl.style.transition='stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)';
+    lineEl.style.strokeDashoffset='0';
+  }
+
   let lastSummary=null;
   function finish(){
     running=false; clearTimers();
@@ -404,21 +522,42 @@
     const far = (fas+0.5)/(nontargets+1);
     const dprime = (normInv(hr)-normInv(far));
 
-    el("rRt").textContent = mean!=null? mean+" ms":"–";
-    el("rAcc").textContent = acc+"%";
-    el("rHit").textContent = hits.length;
-    el("rMiss").textContent = misses;
-    el("rFa").textContent = fas;
-    el("rDp").textContent = isFinite(dprime)? dprime.toFixed(2):"–";
+    const hrPct  = Math.round(hits.length/(targets||1)*100);
+    const farPct = Math.round(fas/(nontargets||1)*100);
 
-    el("tTargets").textContent = targets;
-    el("tHM").textContent = hits.length+" / "+misses;
-    el("tFC").textContent = fas+" / "+crs;
-    el("tMed").textContent = median!=null? median+" ms":"–";
-    el("tRange").textContent = rts.length? (rts[0]+"–"+rts[rts.length-1]+" ms"):"–";
-    el("tRates").textContent = Math.round(hits.length/(targets||1)*100)+"% / "+Math.round(fas/(nontargets||1)*100)+"%";
+    // static text
+    const verd = verdictFor(mean, acc);
+    el("rVerdict").textContent = verd.word;
+    el("rVsub").textContent    = verd.sub;
+    el("rDp").textContent      = isFinite(dprime)? dprime.toFixed(2):"–";
+    el("rMed").textContent     = median!=null? ("median "+median+" ms"):"";
+    el("rHr").textContent      = hrPct+"%";
+    el("rFar").textContent     = farPct+"%";
+    el("rDetail").textContent  = targets+" repeats · "+nontargets+" non-repeats · "+crs+" correctly ignored";
 
+    // reset animated values
+    el("rRt").textContent="0"; el("rAcc").textContent="0";
+    el("rHit").textContent="0"; el("rMiss").textContent="0"; el("rFa").textContent="0";
+    const ring=el("ring"), C=333; ring.style.strokeDashoffset=String(C);
+    el("rHrBar").style.width="0"; el("rFarBar").style.width="0";
+
+    buildRTChart(hits);
+
+    // show + run reveal/animations
     screens.results.classList.add("active");
+    const items=[...document.querySelectorAll("#results .r-item")];
+    items.forEach(it=>it.classList.remove("in"));
+    items.forEach((it,i)=> setTimeout(()=>it.classList.add("in"), 90+i*90));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(mean!=null) animateCount(el("rRt"), mean, 1000); else el("rRt").textContent="–";
+      animateCount(el("rAcc"), acc, 1000);
+      animateCount(el("rHit"), hits.length, 900);
+      animateCount(el("rMiss"), misses, 900);
+      animateCount(el("rFa"), fas, 900);
+      ring.style.strokeDashoffset=String(C*(1-acc/100));
+      setTimeout(()=>{ el("rHrBar").style.width=hrPct+"%"; el("rFarBar").style.width=farPct+"%"; }, 260);
+    }));
+
     lastSummary = {mean, acc, log:[...log], cfg:{...cfg}};
     saveBest(mean, acc);
   }
